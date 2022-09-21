@@ -87,6 +87,7 @@ class CyclicController(Controller):
             )
         self._last_learnable = self.persistor.load(fl_ctx)
         fl_ctx.set_prop(AppConstants.GLOBAL_MODEL, self._last_learnable, private=True, sticky=True)
+        fl_ctx.set_prop(AppConstants.NUM_ROUNDS, self._num_rounds, private=True, sticky=True)
         self.fire_event(AppEventType.INITIAL_MODEL_LOADED, fl_ctx)
 
     def _process_result(self, client_task: ClientTask, fl_ctx: FLContext):
@@ -101,6 +102,7 @@ class CyclicController(Controller):
 
         # prepare task shareable data for next client
         task.data = self.shareable_generator.learnable_to_shareable(self._last_learnable, fl_ctx)
+        task.data.set_header(AppConstants.CURRENT_ROUND, self._current_round)
 
     def control_flow(self, abort_signal: Signal, fl_ctx: FLContext):
         try:
@@ -138,7 +140,7 @@ class CyclicController(Controller):
                 )
                 self.persistor.save(self._last_learnable, fl_ctx)
                 self.log_debug(fl_ctx, "Ending current round={}.".format(self._current_round))
-                self._engine.persist_components(fl_ctx, completed=False)
+                #self._engine.persist_components(fl_ctx, completed=False)
 
             self.log_debug(fl_ctx, "Cyclic ended.")
         except BaseException as e:

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import os
 import shutil
-import datetime
 
 from setuptools import find_packages, setup
 
@@ -84,13 +84,14 @@ setup(
         "PyYAML==6.0",
         "six>=1.15.0",
         "tenseal==0.3.0",
+        "msgpack==1.0.3",
         "docker>=6.0",
     ],
     entry_points={
         "console_scripts": [
             "provision=nvflare.lighter.provision:main",
             "poc=nvflare.lighter.poc:main",
-            "nvflare=nvflare.lighter.nvflare:main",
+            "nvflare=nvflare.cli:main",
             "authz_preview=nvflare.fuel.hci.tools.authz_preview:main",
         ],
     },

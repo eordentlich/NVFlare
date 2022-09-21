@@ -39,6 +39,7 @@ class XGBoostTreeFedHiggsLearner(XGBoostTreeFedLearner):
         max_depth: int = 8,
         eval_metric: str = "auc",
         nthread: int = 16,
+        tree_method: str = "hist",
         train_task_name: str = AppConstants.TASK_TRAIN,
     ):
         super().__init__(
@@ -52,6 +53,7 @@ class XGBoostTreeFedHiggsLearner(XGBoostTreeFedLearner):
             max_depth=max_depth,
             eval_metric=eval_metric,
             nthread=nthread,
+            tree_method=tree_method,
             train_task_name=train_task_name,
         )
         self.data_split_filename = data_split_filename
@@ -78,7 +80,7 @@ class XGBoostTreeFedHiggsLearner(XGBoostTreeFedLearner):
         if "valid" not in data_index.keys():
             self.log_error(
                 fl_ctx,
-                f"Dict of data_index does not contain Validation split",
+                "Dict of data_index does not contain Validation split",
             )
             return make_reply(ReturnCode.TASK_ABORTED)
         site_index = data_index[self.client_id]
@@ -105,7 +107,8 @@ class XGBoostTreeFedHiggsLearner(XGBoostTreeFedLearner):
         X_higgs_valid = higgs.iloc[:, 1:]
         y_higgs_valid = higgs.iloc[:, 0]
 
-        # construct xgboost DMatrix
+        # construct xgboost DMatrix and record potential lr scale factor
         self.dmat_train = xgb.DMatrix(X_higgs_train, label=y_higgs_train)
         self.dmat_valid = xgb.DMatrix(X_higgs_valid, label=y_higgs_valid)
         self.valid_y = y_higgs_valid
+        self.lr_scale = site_index["lr_scale"]

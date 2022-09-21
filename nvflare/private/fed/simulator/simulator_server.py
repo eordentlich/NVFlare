@@ -15,9 +15,10 @@
 from typing import List, Optional
 
 from nvflare.apis.fl_component import FLComponent
-from nvflare.apis.fl_constant import FLContextKey, RunProcessKey, ServerCommandKey
+from nvflare.apis.fl_constant import FLContextKey, ReservedKey, RunProcessKey, ServerCommandKey
 from nvflare.apis.fl_context import FLContext
 from nvflare.apis.shareable import ReturnCode, Shareable, make_reply
+from nvflare.private.fed.server.run_manager import RunManager
 from nvflare.private.fed.server.server_state import HotState
 from nvflare.private.fed.simulator.simulator_const import SimulatorConstants
 
@@ -36,6 +37,11 @@ class SimulatorServerEngine(ServerEngine):
         replies = self.aux_send(targets=targets, topic=topic, request=request, timeout=timeout, fl_ctx=fl_ctx)
 
         return replies
+
+
+class SimulatorRunManager(RunManager):
+    def create_job_processing_context_properties(self, workspace, job_id):
+        return {}
 
 
 class SimulatorServer(FederatedServer):
@@ -62,7 +68,7 @@ class SimulatorServer(FederatedServer):
             handlers,
             args,
             secure_train,
-            enable_byoc,
+            # enable_byoc,
             snapshot_persistor,
             overseer_agent,
         )
@@ -84,10 +90,13 @@ class SimulatorServer(FederatedServer):
 
         return shareable, task_id, taskname
 
-    def _submit_update(self, shareable, shared_fl_context):
+    def _submit_update(self, data, shared_fl_context):
         with self.engine.new_context() as fl_ctx:
+            shareable = data.get(ReservedKey.SHAREABLE)
+            shared_fl_ctx = data.get(ReservedKey.SHARED_FL_CONTEXT)
+
             client = shareable.get_header(ServerCommandKey.FL_CLIENT)
-            fl_ctx.set_peer_context(shared_fl_context)
+            fl_ctx.set_peer_context(shared_fl_ctx)
             contribution_task_name = shareable.get_header(ServerCommandKey.TASK_NAME)
             task_id = shareable.get_cookie(FLContextKey.TASK_ID)
             server_runner = fl_ctx.get_prop(FLContextKey.RUNNER)
@@ -117,3 +126,14 @@ class SimulatorServer(FederatedServer):
     def stop_training(self):
         self.engine.run_processes.clear()
         super().stop_training()
+
+    def create_run_manager(self, workspace, job_id):
+        return SimulatorRunManager(
+            server_name=self.project_name,
+            engine=self.engine,
+            job_id=job_id,
+            workspace=workspace,
+            components=self.runner_config.components,
+            client_manager=self.client_manager,
+            handlers=self.runner_config.handlers,
+        )
